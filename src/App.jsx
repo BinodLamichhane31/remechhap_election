@@ -30,6 +30,7 @@ function App() {
     isSimulating, setIsSimulating,
     addCandidate, updateCandidate, updateVotes,
     deleteCandidate, resetData,
+    wardResults, saveWardResult, getWardResult,
   } = useElectionData();
 
   // Apply dark class to html element
@@ -71,6 +72,7 @@ function App() {
         <ResultsBoard
           candidates={candidates}
           totalVotes={totalVotes}
+          wardResults={wardResults}
           t={t}
           lang={lang}
         />
@@ -85,6 +87,9 @@ function App() {
             onDelete={deleteCandidate}
             onUpdateVotes={updateVotes}
             onReset={resetData}
+            wardResults={wardResults}
+            saveWardResult={saveWardResult}
+            getWardResult={getWardResult}
             isOpen={adminOpen}
             onToggle={handleAdminToggle}
           />

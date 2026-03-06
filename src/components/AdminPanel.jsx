@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { localLevels } from '../data/localLevels';
 
 const emptyForm = {
   name: '', nameNp: '', party: '', partyNp: '',
@@ -6,12 +7,41 @@ const emptyForm = {
   bgColor: 'rgba(99,102,241,0.1)',
 };
 
-export default function AdminPanel({ candidates, t, lang, onAdd, onUpdate, onDelete, onUpdateVotes, onReset, isOpen, onToggle }) {
-  const [mode, setMode] = useState('list'); // 'list' | 'add' | 'edit' | 'votes'
+export default function AdminPanel({
+  candidates, t, lang, onAdd, onUpdate, onDelete, onUpdateVotes, onReset,
+  wardResults, saveWardResult, getWardResult,
+  isOpen, onToggle
+}) {
+  const [mode, setMode] = useState('list'); // 'list' | 'add' | 'edit' | 'votes' | 'ward'
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [voteInput, setVoteInput] = useState({});
   const [confirmDelete, setConfirmDelete] = useState(null);
+
+  // Ward entry state
+  const [selectedLocalLevel, setSelectedLocalLevel] = useState('');
+  const [selectedWard, setSelectedWard] = useState('');
+  const [wardVotesForm, setWardVotesForm] = useState({});
+
+  useEffect(() => {
+    if (selectedLocalLevel && selectedWard) {
+      const data = getWardResult(selectedLocalLevel, selectedWard);
+      setWardVotesForm(data || {});
+    } else {
+      setWardVotesForm({});
+    }
+  }, [selectedLocalLevel, selectedWard, getWardResult]);
+
+  const handleWardVoteChange = (candidateId, val) => {
+    setWardVotesForm(prev => ({ ...prev, [candidateId]: val === '' ? '' : Number(val) }));
+  };
+
+  const handleSaveWardVotes = () => {
+    if (selectedLocalLevel && selectedWard) {
+      saveWardResult(selectedLocalLevel, selectedWard, wardVotesForm);
+      alert(t.saveWardData + ' ✅');
+    }
+  };
 
   const handleFormChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -101,7 +131,7 @@ export default function AdminPanel({ candidates, t, lang, onAdd, onUpdate, onDel
           <div className="flex border-b border-gray-100 dark:border-gray-700 overflow-x-auto">
             {[
               { key: 'list', label: lang === 'np' ? 'तालिका' : 'Candidates List' },
-              { key: 'votes', label: lang === 'np' ? 'मत अद्यावधिक' : 'Update Votes' },
+              { key: 'ward', label: t.wardWiseResults },
               { key: 'add', label: `+ ${t.addCandidate}` },
             ].map(tab => (
               <button
@@ -201,53 +231,89 @@ export default function AdminPanel({ candidates, t, lang, onAdd, onUpdate, onDel
             </div>
           )}
 
-          {/* VOTES MODE */}
-          {mode === 'votes' && (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[500px]">
-                <thead className="bg-gray-50 dark:bg-gray-900/50">
-                  <tr>
-                    {['#', lang === 'np' ? 'नाम' : 'Name', lang === 'np' ? 'हालको मत' : 'Current Votes', lang === 'np' ? 'नयाँ मत' : 'New Votes', ''].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{h}</th>
+          {/* WARD ENTRY MODE */}
+          {mode === 'ward' && (
+            <div className="p-5">
+              <div className="flex flex-col sm:flex-row gap-4 mb-6 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">{t.localLevel}</label>
+                  <select
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-indigo-400"
+                    value={selectedLocalLevel}
+                    onChange={(e) => { setSelectedLocalLevel(e.target.value); setSelectedWard(''); }}
+                  >
+                    <option value="">-- {t.selectLocalLevel} --</option>
+                    {localLevels.map(ll => (
+                      <option key={ll.id} value={ll.id}>
+                        {lang === 'np' ? ll.nameNp : ll.name}
+                      </option>
                     ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-                  {candidates.map((c, i) => (
-                    <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
-                      <td className="px-4 py-3 text-sm font-bold text-gray-400">#{i + 1}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }} />
-                          <span className="text-sm font-semibold text-gray-800 dark:text-white">{lang === 'np' ? c.nameNp : c.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm font-bold text-gray-700 dark:text-gray-300 number-animate">
-                        {c.votes.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        <input
-                          type="number"
-                          min="0"
-                          value={voteInput[c.id] ?? ''}
-                          onChange={(e) => handleVoteChange(c.id, e.target.value)}
-                          placeholder={String(c.votes)}
-                          className="w-32 px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleVoteUpdate(c.id)}
-                          className="px-4 py-1.5 text-xs font-bold bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-40"
-                          disabled={voteInput[c.id] === undefined || voteInput[c.id] === ''}
-                        >
-                          {t.updateVotes}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase">{t.ward}</label>
+                  <select
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-indigo-400 disabled:opacity-50"
+                    value={selectedWard}
+                    onChange={(e) => setSelectedWard(e.target.value)}
+                    disabled={!selectedLocalLevel}
+                  >
+                    <option value="">-- {t.selectWard} --</option>
+                    {selectedLocalLevel && Array.from({ length: localLevels.find(l => l.id == selectedLocalLevel)?.wards || 0 }).map((_, i) => (
+                      <option key={i+1} value={i+1}>{i + 1}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {selectedLocalLevel && selectedWard ? (
+                <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-xl">
+                  <table className="w-full min-w-[500px]">
+                    <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                      <tr>
+                        {['#', lang === 'np' ? 'नाम' : 'Name', lang === 'np' ? 'मत' : 'Votes in Ward'].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {candidates.map((c, i) => (
+                        <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
+                          <td className="px-4 py-3 text-sm font-bold text-gray-400">#{i + 1}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }} />
+                              <span className="text-sm font-semibold text-gray-800 dark:text-white">{lang === 'np' ? c.nameNp : c.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="number"
+                              min="0"
+                              value={wardVotesForm[c.id] ?? ''}
+                              onChange={(e) => handleWardVoteChange(c.id, e.target.value)}
+                              placeholder="0"
+                              className="w-32 px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                    <button
+                      onClick={handleSaveWardVotes}
+                      className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
+                    >
+                      {t.saveWardData}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-10 text-gray-500 dark:text-gray-400 text-sm">
+                  {lang === 'np' ? 'कृपया स्थानीय तह र वडा छान्नुहोस्' : 'Please select a local level and ward to enter votes.'}
+                </div>
+              )}
             </div>
           )}
 

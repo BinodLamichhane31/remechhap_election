@@ -1,7 +1,8 @@
 import CandidateCard from './CandidateCard';
 import VoteProgress from './VoteProgress';
+import WardResultsView from './WardResultsView';
 
-export default function ResultsBoard({ candidates, totalVotes, t, lang }) {
+export default function ResultsBoard({ candidates, totalVotes, wardResults, t, lang }) {
   const top4 = candidates.slice(0, 4);
   const rest = candidates.slice(4);
 
@@ -27,6 +28,14 @@ export default function ResultsBoard({ candidates, totalVotes, t, lang }) {
           ))}
         </div>
       </section>
+
+      {/* Ward-wise selector & results */}
+      <WardResultsView
+        candidates={candidates}
+        wardResults={wardResults}
+        t={t}
+        lang={lang}
+      />
 
       {/* Remaining candidates — leaderboard row */}
       {rest.length > 0 && (

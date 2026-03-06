@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { initialCandidates } from '../data/candidates';
 
 const STORAGE_KEY = 'remechhap_candidates';
+const WARD_STORAGE_KEY = 'remechhap_ward_results';
 
 export function useElectionData() {
   const [candidates, setCandidates] = useState(() => {
@@ -13,31 +14,48 @@ export function useElectionData() {
     }
   });
 
-  const [isSimulating, setIsSimulating] = useState(true);
+  // wardResults shape:
+  // { "localLevelId-wardNo": { candidateId: votes, ... }, ... }
+  const [wardResults, setWardResults] = useState(() => {
+    try {
+      const stored = localStorage.getItem(WARD_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [isSimulating, setIsSimulating] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  // Persist to localStorage
+  // Persist candidates to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(candidates));
   }, [candidates]);
 
-  // Live vote simulation
+  // Persist ward results to localStorage
   useEffect(() => {
-    if (!isSimulating) return;
-    const interval = setInterval(() => {
-      setCandidates(prev => {
-        const updated = prev.map(c => {
-          // Random increment: top candidates get more votes
-          const boost = Math.random() < 0.7 ? Math.floor(Math.random() * 80) + 10 : 0;
-          return { ...c, votes: c.votes + boost };
-        });
-        setLastUpdated(new Date());
-        return updated;
-      });
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [isSimulating]);
+    localStorage.setItem(WARD_STORAGE_KEY, JSON.stringify(wardResults));
+  }, [wardResults]);
 
+  // Live vote simulation removed as per user request
+  useEffect(() => {
+    // We no longer simulate votes. Votes are driven strictly by ward results (or manually added for simplicity elsewhere).
+  }, []);
+
+  // Compute total votes for each candidate from the wardResults
+  // wardResults shape: { "localLevelId-wardNo": { candidateId: votes, ... } }
+  const computedCandidates = candidates.map(c => {
+    let sum = 0;
+    for (const key in wardResults) {
+      if (wardResults[key] && wardResults[key][c.id]) {
+        sum += Number(wardResults[key][c.id]);
+      }
+    }
+    return { ...c, votes: sum };
+  });
+
+  // ── Candidate CRUD ─────────────────────────────────────
   const addCandidate = useCallback((candidate) => {
     const newCandidate = {
       ...candidate,
@@ -68,9 +86,39 @@ export function useElectionData() {
     setCandidates(initialCandidates);
   }, []);
 
-  const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
+  // ── Ward Results CRUD ───────────────────────────────────
+  // key format: `${localLevelId}-${wardNo}`
+  const saveWardResult = useCallback((localLevelId, wardNo, votes) => {
+    // votes: { [candidateId]: voteCount }
+    const key = `${localLevelId}-${wardNo}`;
+    setWardResults(prev => ({
+      ...prev,
+      [key]: { ...votes },
+    }));
+    setLastUpdated(new Date());
+  }, []);
 
-  const sorted = [...candidates].sort((a, b) => b.votes - a.votes);
+  const getWardResult = useCallback((localLevelId, wardNo) => {
+    const key = `${localLevelId}-${wardNo}`;
+    return wardResults[key] || {};
+  }, [wardResults]);
+
+  const clearWardResult = useCallback((localLevelId, wardNo) => {
+    const key = `${localLevelId}-${wardNo}`;
+    setWardResults(prev => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
+  // Returns summary: how many wards entered per local level
+  const getWardSummary = useCallback((localLevelId) => {
+    return Object.keys(wardResults).filter(k => k.startsWith(`${localLevelId}-`)).length;
+  }, [wardResults]);
+
+  const totalVotes = computedCandidates.reduce((sum, c) => sum + c.votes, 0);
+  const sorted = [...computedCandidates].sort((a, b) => b.votes - a.votes);
 
   return {
     candidates: sorted,
@@ -83,5 +131,11 @@ export function useElectionData() {
     updateVotes,
     deleteCandidate,
     resetData,
+    // ward results
+    wardResults,
+    saveWardResult,
+    getWardResult,
+    clearWardResult,
+    getWardSummary,
   };
 }

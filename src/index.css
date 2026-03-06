@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+  }
+}
+
+@layer utilities {
+  .vote-bar {
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-glow {
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5), 0 20px 40px -12px rgba(99, 102, 241, 0.25);
+  }
+
+  .leader-glow {
+    animation: leaderPulse 3s ease-in-out infinite;
+  }
+
+  @keyframes leaderPulse {
+    0%, 100% { box-shadow: 0 0 0 0px rgba(234, 179, 8, 0.4), 0 20px 60px -12px rgba(0,0,0,0.15); }
+    50% { box-shadow: 0 0 0 6px rgba(234, 179, 8, 0.15), 0 20px 60px -12px rgba(0,0,0,0.2); }
+  }
+
+  .number-animate {
+    font-variant-numeric: tabular-nums;
+  }
+}

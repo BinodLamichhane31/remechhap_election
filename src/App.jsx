@@ -5,6 +5,8 @@ import Header from './components/Header';
 import ResultsBoard from './components/ResultsBoard';
 import AdminPanel from './components/AdminPanel';
 
+const isAdminRoute = window.location.pathname === '/adminramechhapelection';
+
 function App() {
   // Theme state
   const [dark, setDark] = useState(() => {
@@ -20,8 +22,8 @@ function App() {
     } catch { return 'en'; }
   });
 
-  // Admin panel open state
-  const [adminOpen, setAdminOpen] = useState(false);
+  // Admin panel: only available on /adminramechhapelection route
+  const [adminOpen, setAdminOpen] = useState(isAdminRoute);
 
   const {
     candidates, totalVotes, lastUpdated,
@@ -73,18 +75,20 @@ function App() {
           lang={lang}
         />
 
-        <AdminPanel
-          candidates={candidates}
-          t={t}
-          lang={lang}
-          onAdd={addCandidate}
-          onUpdate={updateCandidate}
-          onDelete={deleteCandidate}
-          onUpdateVotes={updateVotes}
-          onReset={resetData}
-          isOpen={adminOpen}
-          onToggle={handleAdminToggle}
-        />
+        {isAdminRoute && (
+          <AdminPanel
+            candidates={candidates}
+            t={t}
+            lang={lang}
+            onAdd={addCandidate}
+            onUpdate={updateCandidate}
+            onDelete={deleteCandidate}
+            onUpdateVotes={updateVotes}
+            onReset={resetData}
+            isOpen={adminOpen}
+            onToggle={handleAdminToggle}
+          />
+        )}
       </main>
 
       {/* Footer */}
